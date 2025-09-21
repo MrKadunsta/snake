@@ -1,0 +1,16 @@
+services:
+  - type: web
+    plan: free
+    name: playsnake
+    env: python
+    buildCommand: './build.sh'
+    startCommand: 'gunicorn snakeSite.asgi:application -k uvicorn.workers.UvicornWorker'
+    envVars:
+      - key: DATABASE_URL
+        value: "postgresql://neondb_owner:npg_Ich61ktjsbyn@ep-purple-frog-adgtmhjz-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: WEB_CONCURRENCY
+        value: 1
+      - key: ALLOWED_HOSTS
+        value: "playsnake.onrender.com"
