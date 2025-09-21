@@ -1,0 +1,370 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="{% static "/images/favicon.ico" %}" />
+<title>Play Fullscreen | Snake Online</title>
+<style>
+  body { margin: 0; background: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; }
+  canvas { display: block; outline: none; }
+</style>
+</head>
+<body>
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+<canvas id="gameCanvas" tabindex="0"></canvas>
+<script>
+const canvas = document.getElementById('gameCanvas');
+canvas.focus();
+const ctx = canvas.getContext('2d');
+
+// CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            cookie = cookie.trim();
+            if (cookie.startsWith(name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+const csrftoken = getCookie('csrftoken');
+
+const pixelSize = 40;
+const cols = 15;
+const rows = 17;
+const marginHeight = pixelSize;
+const baseWidth = cols * pixelSize;
+const baseHeight = rows * pixelSize + marginHeight;
+
+// Game state
+let snake = [];
+let snakeLength = 3;
+let dx=1, dy=0, nextDx=1, nextDy=0;
+let apple = {};
+let moveDelay = 250;
+let lastMove = 0;
+let score = 0;
+let gameRunning = false;
+let gameOverFlag = false;
+let inStartMenu = true;
+let startTime = 0;
+let elapsedTime = 0;
+
+// Play button
+const playButton = {x:3*pixelSize, y:12*pixelSize, w:9*pixelSize, h:3*pixelSize};
+let hoveringPlay = false;
+
+// Highscore input
+let awaitingName = false;
+let highscoreName = '';
+let highscoreSavedMessage = '';
+let cursorVisible = true;
+setInterval(() => { cursorVisible = !cursorVisible; }, 500);
+
+// ------------------- Responsive & Centered Canvas -------------------
+function resizeCanvas() {
+    const windowRatio = window.innerWidth / window.innerHeight;
+    const gameRatio = baseWidth / baseHeight;
+    let width, height;
+    if (windowRatio > gameRatio) {
+        height = window.innerHeight;
+        width = height * gameRatio;
+    } else {
+        width = window.innerWidth;
+        height = width / gameRatio;
+    }
+    canvas.width = width;
+    canvas.height = height;
+    const scaleX = width / baseWidth;
+    const scaleY = height / baseHeight;
+    const offsetX = (width - baseWidth * scaleX) / 2;
+    const offsetY = (height - baseHeight * scaleY) / 2;
+    ctx.setTransform(scaleX, 0, 0, scaleY, offsetX, offsetY);
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// ------------------- Game Logic -------------------
+function placeApple() {
+    while(true){
+        const ax = Math.floor(Math.random()*cols);
+        const ay = Math.floor(Math.random()*rows);
+        if(!snake.some(s=>s.x===ax && s.y===ay)){
+            apple = {x:ax,y:ay};
+            break;
+        }
+    }
+}
+
+function drawBackground() {
+    for(let y=0;y<rows;y++){
+        for(let x=0;x<cols;x++){
+            ctx.fillStyle=(x+y)%2===0?'#000':'#1e1e1e';
+            ctx.fillRect(x*pixelSize,y*pixelSize,pixelSize,pixelSize);
+        }
+    }
+}
+
+function drawMarginBar(){
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, rows*pixelSize, cols*pixelSize, marginHeight);
+    ctx.fillStyle = '#fff';
+    const fontSize = pixelSize / 2;
+    ctx.font = `${fontSize}px sans-serif`;
+    ctx.textBaseline = 'bottom';
+    ctx.textAlign = 'left';
+    ctx.fillText(`Score: ${score}`, 5, baseHeight - 5);
+    ctx.textAlign = 'right';
+    ctx.fillText(`Time: ${Math.floor(elapsedTime)}s`, baseWidth - 5, baseHeight - 5);
+}
+
+function drawSnake() {
+    ctx.fillStyle = '#0f0';
+    for (let i = 0; i < snake.length; i++) {
+        ctx.fillRect(snake[i].x * pixelSize, snake[i].y * pixelSize, pixelSize - 1, pixelSize - 1);
+    }
+}
+
+function drawApple(){
+    ctx.fillStyle='#f00';
+    ctx.fillRect(apple.x*pixelSize,apple.y*pixelSize,pixelSize,pixelSize);
+}
+
+function drawButton(button, text, hover){
+    ctx.fillStyle = hover ? '#323232' : '#000';
+    ctx.fillRect(button.x, button.y, button.w, button.h);
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(button.x, button.y, button.w, button.h);
+
+    const fontSize = pixelSize;
+    ctx.fillStyle = '#fff';
+    ctx.font = `${fontSize}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, button.x + button.w/2, button.y + button.h/2);
+}
+
+function drawStartMenu(){
+    ctx.fillStyle='#000';
+    ctx.fillRect(0,0,baseWidth,baseHeight);
+
+    ctx.fillStyle = '#0f0';
+    ctx.fillRect(5*pixelSize, 6*pixelSize, 3*pixelSize, pixelSize);
+    ctx.fillStyle = '#f00';
+    ctx.fillRect(9*pixelSize, 6*pixelSize, pixelSize, pixelSize);
+
+    ctx.fillStyle='#0f0';
+    const titleSize = pixelSize;
+    ctx.font=`${titleSize}px sans-serif`;
+    ctx.textAlign='center';
+    ctx.fillText('SNAKE',baseWidth/2,baseHeight/2-50);
+
+    drawButton(playButton,'Play',hoveringPlay);
+}
+
+function drawGameOver(){
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, baseWidth, baseHeight);
+
+    const titleSize = pixelSize;
+    ctx.fillStyle='red';
+    ctx.font=`${titleSize}px sans-serif`;
+    ctx.textAlign='center';
+    ctx.fillText('GAME OVER', baseWidth/2, baseHeight/2 - 50);
+
+    const infoSize = pixelSize/2;
+    ctx.fillStyle='#fff';
+    ctx.font=`${infoSize}px sans-serif`;
+    ctx.fillText(`Score: ${score}`, baseWidth/2, baseHeight/2 - 10);
+    ctx.fillText(`Time: ${Math.floor(elapsedTime)}s`, baseWidth/2, baseHeight/2 + 20);
+
+    if(awaitingName){
+        let displayText = `New Highscore! Enter Name: ${highscoreName}`;
+        if(cursorVisible) displayText += '|';
+        ctx.fillText(displayText, baseWidth/2, baseHeight/2 + 50);
+    } else if(highscoreSavedMessage){
+        ctx.fillText(highscoreSavedMessage, baseWidth/2, baseHeight/2 + 50);
+    }
+
+    drawButton(playButton,'Play',hoveringPlay);
+}
+
+function startGame(){
+    snake=[{x:7,y:8},{x:6,y:8},{x:5,y:8}];
+    snakeLength=3;
+    dx=1; dy=0; nextDx=1; nextDy=0;
+    moveDelay=250;
+    lastMove=0;
+    score=0;
+    gameRunning=true;
+    gameOverFlag=false;
+    inStartMenu=false;
+    startTime = performance.now();
+    elapsedTime = 0;
+    placeApple();
+    awaitingName=false;
+    highscoreSavedMessage='';
+    highscoreName='';
+}
+
+function update(delta){
+    if(!gameRunning) return;
+    elapsedTime = (performance.now() - startTime)/1000;
+    lastMove += delta;
+    if(lastMove >= moveDelay){
+        if(!(nextDx===-dx && nextDy===-dy)){
+            dx = nextDx; dy = nextDy;
+        }
+        const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+        snake.unshift(head);
+        if(snake.length > snakeLength) snake.pop();
+
+        // Collisions
+        if(head.x<0 || head.x>=cols || head.y<0 || head.y>=rows || 
+           snake.slice(1).some(s=>s.x===head.x && s.y===head.y)) {
+            gameRunning = false;
+            gameOverFlag = true;
+
+            // Highscore check and prompt
+            (async () => {
+                try {
+                    const response = await fetch('/check-highscore/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrftoken
+                        },
+                        body: JSON.stringify({score: score, time: Math.floor(elapsedTime)})
+                    });
+                    const data = await response.json();
+                    if(data.new_highscore){
+                        awaitingName = true;
+                    }
+                } catch(err){
+                    console.error("Error checking highscore:", err);
+                }
+            })();
+        }
+
+        // Apple collision
+        if(head.x===apple.x && head.y===apple.y){
+            snakeLength++;
+            moveDelay=Math.max(50, moveDelay-5);
+            score++;
+            placeApple();
+        }
+
+        lastMove=0;
+    }
+}
+
+function draw(){
+    if(inStartMenu) drawStartMenu();
+    else if(gameOverFlag) drawGameOver();
+    else{
+        drawBackground();
+        drawApple();
+        drawSnake();
+        drawMarginBar();
+    }
+}
+
+// ------------------- Main Loop -------------------
+let lastTime=0;
+function gameLoop(timestamp){
+    const delta = timestamp - lastTime;
+    lastTime = timestamp;
+    update(delta);
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+// ------------------- Input -------------------
+canvas.addEventListener('mousemove', e=>{
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    hoveringPlay = mx/(canvas.width/baseWidth) >= playButton.x &&
+                   mx/(canvas.width/baseWidth) <= playButton.x+playButton.w &&
+                   my/(canvas.height/baseHeight) >= playButton.y &&
+                   my/(canvas.height/baseHeight) <= playButton.y+playButton.h;
+});
+
+canvas.addEventListener('click', e=>{
+    if(hoveringPlay){
+        if(awaitingName){
+            if(highscoreName.trim()!==''){
+                // Save highscore
+                fetch('/save-highscore/', {
+                    method:'POST',
+                    headers: {
+                        'Content-Type':'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: JSON.stringify({
+                        score: score,
+                        time: Math.floor(elapsedTime),
+                        name: highscoreName
+                    })
+                });
+                awaitingName=false;
+                highscoreSavedMessage='Highscore Saved!';
+            }
+        } else startGame();
+    }
+});
+
+document.addEventListener('keydown', e=>{
+    canvas.focus();
+    if(awaitingName){
+        if(e.key.length === 1) highscoreName += e.key;
+        else if(e.key==='Backspace') highscoreName = highscoreName.slice(0,-1);
+        else if(e.key==='Enter' && highscoreName.trim()!==''){
+            fetch('/save-highscore/', {
+                method:'POST',
+                headers: {
+                    'Content-Type':'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({
+                    score: score,
+                    time: Math.floor(elapsedTime),
+                    name: highscoreName
+                })
+            });
+            awaitingName=false;
+            highscoreSavedMessage='Highscore Saved!';
+        }
+        e.preventDefault();
+        return;
+    }
+    if(!gameRunning && !gameOverFlag && inStartMenu && e.key==='Enter'){
+        startGame();
+        return;
+    }
+    switch(e.key){
+        case 'ArrowLeft':
+        case 'a': nextDx=-1; nextDy=0; break;
+        case 'ArrowRight':
+        case 'd': nextDx=1; nextDy=0; break;
+        case 'ArrowUp':
+        case 'w': nextDx=0; nextDy=-1; break;
+        case 'ArrowDown':
+        case 's': nextDx=0; nextDy=1; break;
+        case 'p':
+        case 'Escape': gameRunning=!gameRunning; break;
+    }
+});
+
+canvas.focus();
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>

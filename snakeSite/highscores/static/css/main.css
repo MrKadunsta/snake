@@ -1,0 +1,55 @@
+:root {
+    --button-width: calc(12vw + 5px);
+}
+
+h1 {
+    text-align: center;
+}
+
+h1, p {
+    color: white;
+    margin: 5px
+}
+
+iframe.embedframe {
+    width: 75vw; 
+    height: 75vh; 
+    display: none; 
+    border: none;
+    margin: auto;
+    padding: 5px;
+}
+
+button {
+    width: 12vw;
+    height: 4vh;
+    border-width: thick;
+    border-style: solid;
+    border-radius: 100vw;
+}
+
+button.embed {
+    background-color: rgb(0, 255, 0);
+    color: #000000;
+    border-color: rgb(0, 255, 0);
+}
+
+button.fullscreen {
+    background-color: rgb(255, 0, 0);
+    color: #ffffff;
+    border-color: rgb(255, 0, 0);
+}
+
+button.embed:hover {
+    background-color: rgb(0, 200, 0);
+    border-color: rgb(0, 200, 0);
+}
+
+button.fullscreen:hover {
+    background-color: rgb(200, 0, 0);
+    border-color: rgb(200, 0, 0);
+}
+
+div.buttons {
+    margin-left: calc(50vw - var(--button-width));
+}

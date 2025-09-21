@@ -1,0 +1,14 @@
+th, td {
+    color: #ffffff;
+    text-align: center;
+}
+
+table, th, td {
+    border: solid #ffffff;
+}
+
+table {
+    width: 90%;
+    margin: auto;
+    margin-top: 10px;
+}

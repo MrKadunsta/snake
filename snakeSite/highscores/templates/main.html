@@ -1,0 +1,58 @@
+{% extends "master.html" %}
+
+{% load static %}
+
+{% block title %}
+    Home | Snake Online
+{% endblock %}
+
+{% block pageStylesheet %}
+    {% static "/css/main.css" %}
+{% endblock %}
+
+{% block hslink %}
+    /highscores
+{% endblock  %}
+
+{% block homelink %}
+    #
+{% endblock  %}
+
+{% block aboutlink %}
+    /about
+{% endblock %}
+
+{% block htplink %}
+    /how-to-play
+{% endblock htplink %}
+
+{% block content %}
+    <h1>Snake Online</h1>
+    <div class="buttons">
+        <button 
+            class="embed"
+            onclick="
+                document.getElementById('game-frame').style.display='block'
+            "
+        >
+            Play Snake
+        </button>
+        <button 
+            class="fullscreen"
+            onclick=" 
+                window.open(
+                    'fullscreen',
+                    '_blank')
+            "
+        >
+        Play Fullscreen
+        </button>
+    </div>
+    <iframe 
+        class="embedframe"
+        id="game-frame" 
+        src="{% url 'game' %}" 
+    >
+    </iframe>
+
+{% endblock %}

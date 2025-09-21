@@ -1,0 +1,49 @@
+{% extends "master.html" %}
+
+{% load static %}
+
+{% block title %}
+    Highscores | Snake Online
+{% endblock %}
+
+{% block pageStylesheet %}
+    {% static "/css/hs.css" %}
+{% endblock %}
+
+{% block homelink %}
+    /
+{% endblock  %}
+
+{% block aboutlink %}
+    /about
+{% endblock  %}
+
+{% block hslink %}
+    #
+{% endblock hslink %}
+
+{% block htplink %}
+    /how-to-play
+{% endblock htplink %}
+    
+{% block content %}
+
+<table id="highscoreTable">
+    {% for x in allhighscores %}
+    <tr>
+        <td id="pos{{ forloop.counter }}">{{ forloop.counter }}</td>
+        <td>{{ x.name }}</td>
+        <td>{{ x.score }}</td>
+        <td>{{ x.time }} seconds</td>
+    </tr>
+    {% endfor %}
+    <tr>
+        <th>Position</th>
+        <th>Name</th>
+        <th>Score</th>
+        <th>Time</th>
+    </tr>
+</table>
+<script src="{% static "/js/hs.js" %}"></script>
+
+{% endblock %}

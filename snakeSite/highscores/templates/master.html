@@ -1,0 +1,23 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en-us">
+    <head>
+        <title>{% block title %}{% endblock %}</title>
+        <link rel="icon" type="image/x-icon" href="{% static "/images/favicon.ico" %}" />
+        <link rel="stylesheet" href="{% static "/css/styles.css" %}?=v5" /><!-- Remove ?v=x for deployment and increment while in development-->
+        <link rel="stylesheet" href="{% block pageStylesheet %}{% endblock %}?=v2" />
+    </head>
+    <body>
+        <ul class="ulnavbar">
+            <li class="linavbar"><a href="{% block homelink %}{% endblock %}" class="anavbar">Home</a></li>
+            <li class="linavbar"><a href="{% block hslink %}{% endblock %}" class="anavbar">Highscores</a></li>
+            <li class="linavbar"><a href="{% block aboutlink %}{% endblock %}" class="anavbar">About</a></li>
+            <li class="linavbar"><a href="{% block htplink %}{% endblock %}" class="anavbar">How to Play</a></li>
+        </ul>
+
+        {% block content %}
+        {% endblock %}
+
+    </body>
+</html>
