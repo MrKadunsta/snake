@@ -1,0 +1,21 @@
+asgiref==3.9.1
+Brotli==1.1.0
+certifi==2025.8.3
+click==8.3.0
+dj-database-url==3.0.1
+Django==5.2.6
+dotenv==0.9.9
+fanstatic==1.5
+gunicorn==23.0.0
+h11==0.16.0
+legacy-cgi==2.6.3
+packaging==25.0
+psycopg2-binary==2.9.10
+pygame==2.6.1
+pygbag @ git+https://github.com/pygame-web/pygbag@2240abacb20a6eff6a0ceaf6a320acafe6ab0e57
+python-dotenv==1.1.1
+setuptools==80.9.0
+sqlparse==0.5.3
+uvicorn==0.36.0
+WebOb==1.8.9
+whitenoise==6.11.0
